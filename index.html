@@ -422,6 +422,24 @@
         width: 100%;
         height: 100%;
       }
+      /* Mobil Ekranlar İçin Özel Tasarım (Telefonlar) */
+        @media (max-width: 768px) {
+            #ui-container { 
+                top: 15px; left: 50%; transform: translateX(-50%); 
+                width: 90%; justify-content: center; gap: 15px;
+            }
+            .gosterge { 
+                padding: 8px 15px; font-size: 16px; 
+            }
+            #btnCikis { 
+                top: auto; bottom: 20px; left: 20px; right: auto; 
+                font-size: 14px; padding: 10px 15px; z-index: 1000;
+            }
+            #btnBitir { 
+                bottom: 20px; left: auto; right: 20px; transform: none; 
+                font-size: 14px; padding: 10px 15px; z-index: 1000;
+            }
+        }
     </style>
   </head>
   <body>
