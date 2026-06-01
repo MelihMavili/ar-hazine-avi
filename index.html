@@ -2,7 +2,10 @@
 <html lang="tr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no"
+    />
     <title>Siber Hazine Avı - AR</title>
 
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
@@ -53,6 +56,16 @@
         btnBitir,
         btnCikis,
         miniSkorListesi;
+
+      // AR.js mobil ekran (zoom) hatasını çözmek için sahte sinyal
+      window.addEventListener("camera-init", () => {
+        setTimeout(() => {
+          window.dispatchEvent(new Event("resize"));
+        }, 1000);
+        setTimeout(() => {
+          window.dispatchEvent(new Event("resize"));
+        }, 2500);
+      });
 
       window.addEventListener("DOMContentLoaded", () => {
         loginScreen = document.getElementById("login-screen");
