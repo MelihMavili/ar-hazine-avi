@@ -167,10 +167,10 @@
           // KAMERA KODLARI DÜZELTİLDİ: Stabil HD çözünürlük kullanıldı, CSS ile ekrana yayılacak.
           arContainer.innerHTML = `
 <a-scene 
-    embedded 
     vr-mode-ui="enabled: false" 
-    arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3; sourceWidth: 1280; sourceHeight: 960; displayWidth: 1280; displayHeight: 960;">                <a-light type="ambient" color="#ffffff" intensity="10.0"></a-light>
-                <a-light type="directional" color="#ffffff" intensity="8.0" position="-1 2 1"></a-light>
+    arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3; sourceWidth: 1280; sourceHeight: 960; displayWidth: 1280; displayHeight: 960;">
+
+    <a-light type="directional" color="#ffffff" intensity="8.0" position="-1 2 1"></a-light>
 
                 <a-marker type="barcode" value="0" id="hazine1" marker-takip>
                     <a-entity gltf-model="modeller/seadogs_compass.glb" position="0 0.5 0" scale="30 30 30" animation-mixer></a-entity>
