@@ -22,7 +22,7 @@
         orderBy,
         onSnapshot,
       } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-      // Firebase Bilgilerin
+
       const firebaseConfig = {
         apiKey: "AIzaSyCAXl2mbAKmJ0OzLL6zeEkIRkNmgYsZs1w",
         authDomain: "hazine-avi-fcb82.firebaseapp.com",
@@ -41,7 +41,6 @@
       let toplananHazineler = new Set();
       const toplamHazineSayisi = 5;
 
-      // DOM Elementleri
       let loginScreen,
         infoScreen,
         gameScreen,
@@ -68,7 +67,7 @@
         btnBitir = document.getElementById("btnBitir");
         btnCikis = document.getElementById("btnCikis");
         miniSkorListesi = document.getElementById("mini-skor-listesi");
-        // --- YENİ: Giriş Ekranındaki Canlı Skor Tablosu ---
+
         const skorQuery = query(
           collection(db, "skorlar"),
           orderBy("gecenSure", "asc"),
@@ -84,7 +83,6 @@
           let sira = 1;
           snapshot.forEach((doc) => {
             if (sira <= 5) {
-              // Sadece ilk 5 takımı gösterir
               const data = doc.data();
               const dk = Math.floor(data.gecenSure / 60)
                 .toString()
@@ -101,8 +99,7 @@
             sira++;
           });
         });
-        // 1. Adım: Takım Adı Girme
-        // 1. Adım: Takım Adı Girme ve Mükerrer İsim Kontrolü
+
         btnBasla.addEventListener("click", async () => {
           takimAdi = txtTakim.value.trim();
 
@@ -111,12 +108,10 @@
             return;
           }
 
-          // Butonu geçici olarak devre dışı bırak
           btnBasla.disabled = true;
           btnBasla.innerText = "Kontrol Ediliyor...";
 
           try {
-            // Veritabanında bu isim var mı diye sor
             const q = query(
               collection(db, "skorlar"),
               where("takimAdi", "==", takimAdi),
@@ -132,7 +127,6 @@
               return;
             }
 
-            // İsim yoksa oyuna al
             loginScreen.style.display = "none";
             infoScreen.style.display = "flex";
           } catch (error) {
@@ -143,12 +137,10 @@
           }
         });
 
-        // 2. Adım: Kamerayı Aç ve Süreyi Başlat
         btnKameraAc.addEventListener("click", () => {
           infoScreen.style.display = "none";
           gameScreen.style.visibility = "visible";
 
-          // Canlı Süre Sayacını Başlat
           baslangicZamani = new Date();
           timerInterval = setInterval(() => {
             let gecenSaniye = Math.floor((new Date() - baslangicZamani) / 1000);
@@ -159,52 +151,50 @@
             lblZaman.innerText = `${dk}:${sn}`;
           }, 1000);
 
-          // AR Sahnesini DOM'a Enjekte Et
+          // KAMERA KODLARI DÜZELTİLDİ: Stabil HD çözünürlük kullanıldı, CSS ile ekrana yayılacak.
           arContainer.innerHTML = `
 <a-scene 
     embedded 
     vr-mode-ui="enabled: false" 
-    arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3; sourceWidth: 1920; sourceHeight: 1080; displayWidth: 1080; displayHeight: 1920;">                        
-                        <a-light type="ambient" color="#ffffff" intensity="10.0"></a-light>
-                        <a-light type="directional" color="#ffffff" intensity="8.0" position="-1 2 1"></a-light>
+    arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3; sourceWidth: 1280; sourceHeight: 960; displayWidth: 1280; displayHeight: 960;">
+                <a-light type="ambient" color="#ffffff" intensity="10.0"></a-light>
+                <a-light type="directional" color="#ffffff" intensity="8.0" position="-1 2 1"></a-light>
 
-                        <a-marker type="barcode" value="0" id="hazine1" marker-takip>
-                            <a-entity gltf-model="modeller/seadogs_compass.glb" position="0 0.5 0" scale="30 30 30" animation-mixer></a-entity>
-                        </a-marker>
+                <a-marker type="barcode" value="0" id="hazine1" marker-takip>
+                    <a-entity gltf-model="modeller/seadogs_compass.glb" position="0 0.5 0" scale="30 30 30" animation-mixer></a-entity>
+                </a-marker>
 
-                        <a-marker type="barcode" value="1" id="hazine2" marker-takip>
-                            <a-entity gltf-model="modeller/steampunk_watch.glb" position="0 0.5 0" rotation="-45 0 0" scale="1 1 1" animation-mixer></a-entity>
-                        </a-marker>
+                <a-marker type="barcode" value="1" id="hazine2" marker-takip>
+                    <a-entity gltf-model="modeller/steampunk_watch.glb" position="0 0.5 0" rotation="-45 0 0" scale="1 1 1" animation-mixer></a-entity>
+                </a-marker>
 
-                        <a-marker type="barcode" value="2" id="hazine3" marker-takip>
-                            <a-entity gltf-model="modeller/lumen_64__computer.glb" position="0 0.5 0" rotation="0 -90 90" scale="0.15 0.15 0.15" animation-mixer></a-entity>
-                        </a-marker>
+                <a-marker type="barcode" value="2" id="hazine3" marker-takip>
+                    <a-entity gltf-model="modeller/lumen_64__computer.glb" position="0 0.5 0" rotation="0 -90 90" scale="0.15 0.15 0.15" animation-mixer></a-entity>
+                </a-marker>
 
-                        <a-marker type="barcode" value="3" id="hazine4" marker-takip>
-                            <a-entity gltf-model="modeller/eth_travel_theodolite_1899__reise-theodolit.glb" position="0 0.5 0" rotation="45 -90 90" scale="15 15 15" animation-mixer></a-entity>
-                        </a-marker>
+                <a-marker type="barcode" value="3" id="hazine4" marker-takip>
+                    <a-entity gltf-model="modeller/eth_travel_theodolite_1899__reise-theodolit.glb" position="0 0.5 0" rotation="45 -90 90" scale="15 15 15" animation-mixer></a-entity>
+                </a-marker>
 
-                        <a-marker type="barcode" value="4" id="hazine5" marker-takip>
-                            <a-entity gltf-model="modeller/796e13c85e52417dbbe49248df20e1a1.glb" position="0 0.5 0" rotation="45 -90 90" scale="1 1 1" animation-mixer></a-entity>
-                        </a-marker>
+                <a-marker type="barcode" value="4" id="hazine5" marker-takip>
+                    <a-entity gltf-model="modeller/796e13c85e52417dbbe49248df20e1a1.glb" position="0 0.5 0" rotation="45 -90 90" scale="1 1 1" animation-mixer></a-entity>
+                </a-marker>
 
-                        <a-entity camera="fov: 30"></a-entity>
-                    </a-scene>
-                `;
+                <a-entity camera></a-entity>
+            </a-scene>
+          `;
         });
 
-        // Erken Çıkış Butonu Fonksiyonu
         btnCikis.addEventListener("click", () => {
           const onay = confirm(
             "Oyundan çıkmak istediğinize emin misiniz? Mevcut süreniz ve tüm ilerlemeniz sıfırlanacaktır!",
           );
           if (onay) {
             clearInterval(timerInterval);
-            window.location.reload(); // Sayfayı yenileyerek her şeyi temiz bir şekilde en başa döndürür
+            window.location.reload();
           }
         });
 
-        // 3. Adım: Görevi Bitirme
         btnBitir.addEventListener("click", async () => {
           btnBitir.disabled = true;
           btnBitir.innerText = "Kaydediliyor...";
@@ -237,7 +227,6 @@
         });
       });
 
-      // AR Marker Algılama Bileşeni
       AFRAME.registerComponent("marker-takip", {
         init: function () {
           this.el.addEventListener("markerFound", () => {
@@ -280,6 +269,7 @@
         background: #1a1a2e;
         overflow-y: auto;
       }
+
       button:disabled {
         background: #555;
         cursor: not-allowed;
@@ -359,7 +349,6 @@
         height: 100%;
       }
 
-      /* Arayüz Üst Konteyner (Sayac ve Zaman) */
       #ui-container {
         position: fixed;
         top: 20px;
@@ -369,6 +358,7 @@
         gap: 10px;
         pointer-events: none;
       }
+
       .gosterge {
         background: rgba(22, 22, 36, 0.9);
         color: white;
@@ -380,7 +370,6 @@
         font-family: "Courier New", Courier, monospace;
       }
 
-      /* Sağ Üst Çıkış Butonu */
       #btnCikis {
         position: fixed;
         top: 20px;
@@ -421,43 +410,62 @@
         width: 100%;
         height: 100%;
       }
+
       /* Mobil Ekranlar İçin Özel Tasarım (Telefonlar) */
-        @media (max-width: 768px) {
-            #ui-container { 
-                top: 15px; left: 50%; transform: translateX(-50%); 
-                width: 90%; justify-content: center; gap: 15px;
-            }
-            .gosterge { 
-                padding: 8px 15px; font-size: 16px; 
-            }
-            #btnCikis { 
-                top: auto; bottom: 20px; left: 20px; right: auto; 
-                font-size: 14px; padding: 10px 15px; z-index: 1000;
-            }
-            #btnBitir { 
-                bottom: 20px; left: auto; right: 20px; transform: none; 
-                font-size: 14px; padding: 10px 15px; z-index: 1000;
-            }
+      @media (max-width: 768px) {
+        #ui-container {
+          top: 15px;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 90%;
+          justify-content: center;
+          gap: 15px;
         }
+        .gosterge {
+          padding: 8px 15px;
+          font-size: 16px;
+        }
+        #btnCikis {
+          top: auto;
+          bottom: 20px;
+          left: 20px;
+          right: auto;
+          font-size: 14px;
+          padding: 10px 15px;
+          z-index: 1000;
+        }
+        #btnBitir {
+          bottom: 20px;
+          left: auto;
+          right: 20px;
+          transform: none;
+          font-size: 14px;
+          padding: 10px 15px;
+          z-index: 1000;
+        }
+      }
     </style>
   </head>
   <body>
-<body>
     <div id="login-screen">
-        <div class="box">
-            <h2>Siber Şifre Avı</h2>
-            <p>Sisteme erişmek için takım adınızı girin.</p>
-            <input type="text" id="txtTakim" placeholder="Takım Adı" autocomplete="off">
-            <button id="btnBasla">SİSTEMİ BAŞLAT</button>
-        </div>
+      <div class="box">
+        <h2>Siber Şifre Avı</h2>
+        <p>Sisteme erişmek için takım adınızı girin.</p>
+        <input
+          type="text"
+          id="txtTakim"
+          placeholder="Takım Adı"
+          autocomplete="off"
+        />
+        <button id="btnBasla">SİSTEMİ BAŞLAT</button>
+      </div>
 
-        <div class="mini-scoreboard">
-            <h3>🏆 Liderlik Tablosu</h3>
-            <div id="mini-skor-listesi">
-                </div>
-        </div>
+      <div class="mini-scoreboard">
+        <h3>🏆 Liderlik Tablosu</h3>
+        <div id="mini-skor-listesi"></div>
+      </div>
     </div>
-    
+
     <div id="info-screen" style="display: none">
       <div class="box">
         <h2>Sistem Hazır</h2>
