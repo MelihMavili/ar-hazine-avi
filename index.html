@@ -1,0 +1,464 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Siber Hazine Avı - AR</title>
+
+    <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.0.0/dist/aframe-extras.min.js"></script>
+
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+      import {
+        getFirestore,
+        collection,
+        addDoc,
+        serverTimestamp,
+        query,
+        where,
+        getDocs,
+        orderBy,
+        onSnapshot,
+      } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+      // Firebase Bilgilerin
+      const firebaseConfig = {
+        apiKey: "AIzaSyCAXl2mbAKmJ0OzLL6zeEkIRkNmgYsZs1w",
+        authDomain: "hazine-avi-fcb82.firebaseapp.com",
+        projectId: "hazine-avi-fcb82",
+        storageBucket: "hazine-avi-fcb82.firebasestorage.app",
+        messagingSenderId: "767779389071",
+        appId: "1:767779389071:web:b72ab019772cfa8537bafa",
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+
+      let takimAdi = "";
+      let baslangicZamani = null;
+      let timerInterval;
+      let toplananHazineler = new Set();
+      const toplamHazineSayisi = 5;
+
+      // DOM Elementleri
+      let loginScreen,
+        infoScreen,
+        gameScreen,
+        arContainer,
+        txtTakim,
+        btnBasla,
+        btnKameraAc,
+        lblSayac,
+        lblZaman,
+        btnBitir,
+        btnCikis,
+        miniSkorListesi;
+
+      window.addEventListener("DOMContentLoaded", () => {
+        loginScreen = document.getElementById("login-screen");
+        infoScreen = document.getElementById("info-screen");
+        gameScreen = document.getElementById("game-screen");
+        arContainer = document.getElementById("ar-container");
+        txtTakim = document.getElementById("txtTakim");
+        btnBasla = document.getElementById("btnBasla");
+        btnKameraAc = document.getElementById("btnKameraAc");
+        lblSayac = document.getElementById("lblSayac");
+        lblZaman = document.getElementById("lblZaman");
+        btnBitir = document.getElementById("btnBitir");
+        btnCikis = document.getElementById("btnCikis");
+        miniSkorListesi = document.getElementById("mini-skor-listesi");
+        // --- YENİ: Giriş Ekranındaki Canlı Skor Tablosu ---
+        const skorQuery = query(
+          collection(db, "skorlar"),
+          orderBy("gecenSure", "asc"),
+        );
+        onSnapshot(skorQuery, (snapshot) => {
+          miniSkorListesi.innerHTML = "";
+          if (snapshot.empty) {
+            miniSkorListesi.innerHTML =
+              "<p style='color:#bbb; font-size:14px;'>Henüz tamamlayan takım yok. İlk sen ol!</p>";
+            return;
+          }
+
+          let sira = 1;
+          snapshot.forEach((doc) => {
+            if (sira <= 5) {
+              // Sadece ilk 5 takımı gösterir
+              const data = doc.data();
+              const dk = Math.floor(data.gecenSure / 60)
+                .toString()
+                .padStart(2, "0");
+              const sn = (data.gecenSure % 60).toString().padStart(2, "0");
+
+              miniSkorListesi.innerHTML += `
+                            <div class="skor-satir" style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed #333; font-size: 15px;">
+                                <span><span style="color: #e94560; font-weight: bold; margin-right: 5px;">#${sira}</span> ${data.takimAdi}</span>
+                                <span style="font-family: 'Courier New', monospace; color: #4caf50; font-weight: bold;">${dk}:${sn}</span>
+                            </div>
+                        `;
+            }
+            sira++;
+          });
+        });
+        // 1. Adım: Takım Adı Girme
+        // 1. Adım: Takım Adı Girme ve Mükerrer İsim Kontrolü
+        btnBasla.addEventListener("click", async () => {
+          takimAdi = txtTakim.value.trim();
+
+          if (takimAdi === "") {
+            alert("Lütfen geçerli bir takım ismi girin!");
+            return;
+          }
+
+          // Butonu geçici olarak devre dışı bırak
+          btnBasla.disabled = true;
+          btnBasla.innerText = "Kontrol Ediliyor...";
+
+          try {
+            // Veritabanında bu isim var mı diye sor
+            const q = query(
+              collection(db, "skorlar"),
+              where("takimAdi", "==", takimAdi),
+            );
+            const querySnapshot = await getDocs(q);
+
+            if (!querySnapshot.empty) {
+              alert(
+                "Bu takım adı daha önce kullanılmış! Lütfen başka bir isim seçin.",
+              );
+              btnBasla.disabled = false;
+              btnBasla.innerText = "SİSTEMİ BAŞLAT";
+              return;
+            }
+
+            // İsim yoksa oyuna al
+            loginScreen.style.display = "none";
+            infoScreen.style.display = "flex";
+          } catch (error) {
+            console.error("Veritabanı hatası:", error);
+            alert("Bağlantı hatası oluştu, lütfen tekrar deneyin.");
+            btnBasla.disabled = false;
+            btnBasla.innerText = "SİSTEMİ BAŞLAT";
+          }
+        });
+
+        // 2. Adım: Kamerayı Aç ve Süreyi Başlat
+        btnKameraAc.addEventListener("click", () => {
+          infoScreen.style.display = "none";
+          gameScreen.style.visibility = "visible";
+
+          // Canlı Süre Sayacını Başlat
+          baslangicZamani = new Date();
+          timerInterval = setInterval(() => {
+            let gecenSaniye = Math.floor((new Date() - baslangicZamani) / 1000);
+            let dk = Math.floor(gecenSaniye / 60)
+              .toString()
+              .padStart(2, "0");
+            let sn = (gecenSaniye % 60).toString().padStart(2, "0");
+            lblZaman.innerText = `${dk}:${sn}`;
+          }, 1000);
+
+          // AR Sahnesini DOM'a Enjekte Et
+          arContainer.innerHTML = `
+                    <a-scene embedded arjs="sourceType: webcam; detectionMode: mono_and_matrix; matrixCodeType: 3x3;">
+                        
+                        <a-light type="ambient" color="#ffffff" intensity="10.0"></a-light>
+                        <a-light type="directional" color="#ffffff" intensity="8.0" position="-1 2 1"></a-light>
+
+                        <a-marker type="barcode" value="0" id="hazine1" marker-takip>
+                            <a-entity gltf-model="modeller/seadogs_compass.glb" position="0 0.5 0" scale="30 30 30" animation-mixer></a-entity>
+                        </a-marker>
+
+                        <a-marker type="barcode" value="1" id="hazine2" marker-takip>
+                            <a-entity gltf-model="modeller/steampunk_watch.glb" position="0 0.5 0" rotation="-45 0 0" scale="1 1 1" animation-mixer></a-entity>
+                        </a-marker>
+
+                        <a-marker type="barcode" value="2" id="hazine3" marker-takip>
+                            <a-entity gltf-model="modeller/lumen_64__computer.glb" position="0 0.5 0" rotation="0 -90 90" scale="0.15 0.15 0.15" animation-mixer></a-entity>
+                        </a-marker>
+
+                        <a-marker type="barcode" value="3" id="hazine4" marker-takip>
+                            <a-entity gltf-model="modeller/eth_travel_theodolite_1899__reise-theodolit.glb" position="0 0.5 0" rotation="45 -90 90" scale="15 15 15" animation-mixer></a-entity>
+                        </a-marker>
+
+                        <a-marker type="barcode" value="4" id="hazine5" marker-takip>
+                            <a-entity gltf-model="modeller/796e13c85e52417dbbe49248df20e1a1.glb" position="0 0.5 0" rotation="45 -90 90" scale="1 1 1" animation-mixer></a-entity>
+                        </a-marker>
+
+                        <a-entity camera></a-entity>
+                    </a-scene>
+                `;
+        });
+
+        // Erken Çıkış Butonu Fonksiyonu
+        btnCikis.addEventListener("click", () => {
+          const onay = confirm(
+            "Oyundan çıkmak istediğinize emin misiniz? Mevcut süreniz ve tüm ilerlemeniz sıfırlanacaktır!",
+          );
+          if (onay) {
+            clearInterval(timerInterval);
+            window.location.reload(); // Sayfayı yenileyerek her şeyi temiz bir şekilde en başa döndürür
+          }
+        });
+
+        // 3. Adım: Görevi Bitirme
+        btnBitir.addEventListener("click", async () => {
+          btnBitir.disabled = true;
+          btnBitir.innerText = "Kaydediliyor...";
+          clearInterval(timerInterval);
+
+          const bitisZamani = new Date();
+          const gecenSureSaniye = Math.floor(
+            (bitisZamani - baslangicZamani) / 1000,
+          );
+
+          try {
+            await addDoc(collection(db, "skorlar"), {
+              takimAdi: takimAdi,
+              gecenSure: gecenSureSaniye,
+              tarih: serverTimestamp(),
+            });
+
+            const dakika = Math.floor(gecenSureSaniye / 60);
+            const saniye = gecenSureSaniye % 60;
+            alert(
+              `Tebrikler! Görevi ${dakika} dakika ${saniye} saniyede tamamladınız.`,
+            );
+            window.location.href = "scoreboard.html";
+          } catch (e) {
+            console.error("Hata: ", e);
+            alert("Skor kaydedilirken hata oluştu.");
+            btnBitir.disabled = false;
+            btnBitir.innerText = "BİTİR";
+          }
+        });
+      });
+
+      // AR Marker Algılama Bileşeni
+      AFRAME.registerComponent("marker-takip", {
+        init: function () {
+          this.el.addEventListener("markerFound", () => {
+            let markerId = this.el.id;
+            if (!toplananHazineler.has(markerId)) {
+              toplananHazineler.add(markerId);
+              lblSayac.innerText = `${toplananHazineler.size} / ${toplamHazineSayisi}`;
+
+              if (toplananHazineler.size === toplamHazineSayisi) {
+                btnBitir.style.display = "block";
+              }
+            }
+          });
+        },
+      });
+    </script>
+
+    <style>
+      body {
+        margin: 0;
+        font-family: "Segoe UI", sans-serif;
+        overflow: hidden;
+        background: #1a1a2e;
+      }
+
+      #login-screen,
+      #info-screen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 25px;
+        z-index: 9999;
+        color: white;
+        background: #1a1a2e;
+        overflow-y: auto;
+      }
+      button:disabled {
+        background: #555;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+      }
+
+      .mini-scoreboard {
+        background: rgba(22, 22, 36, 0.8);
+        width: 85%;
+        max-width: 400px;
+        padding: 20px;
+        border-radius: 12px;
+        border: 1px solid #252538;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+      }
+      .mini-scoreboard h3 {
+        margin: 0 0 15px 0;
+        font-size: 18px;
+        color: #00bcd4;
+        text-align: center;
+        border-bottom: 1px solid #252538;
+        padding-bottom: 10px;
+      }
+
+      .box {
+        background: #161624;
+        padding: 40px;
+        border-radius: 12px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+        text-align: center;
+        width: 85%;
+        max-width: 400px;
+      }
+      .box h2 {
+        color: #e94560;
+        margin-top: 0;
+      }
+
+      input {
+        width: 100%;
+        padding: 15px;
+        margin: 20px 0;
+        border: none;
+        border-radius: 8px;
+        box-sizing: border-box;
+        font-size: 16px;
+        background: #252538;
+        color: white;
+        outline: none;
+      }
+
+      button {
+        background: #e94560;
+        color: white;
+        border: none;
+        padding: 15px 30px;
+        border-radius: 8px;
+        font-size: 16px;
+        cursor: pointer;
+        font-weight: bold;
+        width: 100%;
+        transition: 0.3s;
+        box-shadow: 0 4px 15px rgba(233, 69, 96, 0.4);
+      }
+      button:hover {
+        background: #ff4a6b;
+        transform: translateY(-2px);
+      }
+
+      #game-screen {
+        visibility: hidden;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+      }
+
+      /* Arayüz Üst Konteyner (Sayac ve Zaman) */
+      #ui-container {
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        z-index: 999;
+        display: flex;
+        gap: 10px;
+        pointer-events: none;
+      }
+      .gosterge {
+        background: rgba(22, 22, 36, 0.9);
+        color: white;
+        padding: 10px 20px;
+        border-radius: 30px;
+        font-size: 18px;
+        font-weight: bold;
+        border: 2px solid #e94560;
+        font-family: "Courier New", Courier, monospace;
+      }
+
+      /* Sağ Üst Çıkış Butonu */
+      #btnCikis {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 999;
+        width: auto;
+        background: #343a40;
+        border: 2px solid #6c757d;
+        padding: 10px 20px;
+        border-radius: 30px;
+        font-size: 16px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+        pointer-events: auto;
+      }
+      #btnCikis:hover {
+        background: #dc3545;
+        border-color: #dc3545;
+      }
+
+      #btnBitir {
+        position: fixed;
+        bottom: 40px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 999;
+        display: none;
+        pointer-events: auto;
+        background: #28a745;
+        box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4);
+        font-size: 20px;
+        padding: 15px 40px;
+      }
+      #btnBitir:hover {
+        background: #34ce57;
+      }
+
+      #ar-container {
+        width: 100%;
+        height: 100%;
+      }
+    </style>
+  </head>
+  <body>
+<body>
+    <div id="login-screen">
+        <div class="box">
+            <h2>Siber Şifre Avı</h2>
+            <p>Sisteme erişmek için takım adınızı girin.</p>
+            <input type="text" id="txtTakim" placeholder="Takım Adı" autocomplete="off">
+            <button id="btnBasla">SİSTEMİ BAŞLAT</button>
+        </div>
+
+        <div class="mini-scoreboard">
+            <h3>🏆 Liderlik Tablosu</h3>
+            <div id="mini-skor-listesi">
+                </div>
+        </div>
+    </div>
+    
+    <div id="info-screen" style="display: none">
+      <div class="box">
+        <h2>Sistem Hazır</h2>
+        <p>
+          Görev alanına geçin. Kamera açıldığında süre işlemeye başlayacaktır.
+        </p>
+        <br />
+        <button id="btnKameraAc">KAMERAYI AÇ VE BAŞLA</button>
+      </div>
+    </div>
+
+    <div id="game-screen">
+      <div id="ui-container">
+        <div id="lblSayac" class="gosterge">0 / 5</div>
+        <div id="lblZaman" class="gosterge">00:00</div>
+      </div>
+
+      <button id="btnCikis">Vazgeç / Çıkış</button>
+      <button id="btnBitir">GÖREVİ BİTİR</button>
+
+      <div id="ar-container"></div>
+    </div>
+  </body>
+</html>

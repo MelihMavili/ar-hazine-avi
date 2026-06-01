@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Canlı Skor Tablosu</title>
+    <style>
+      body {
+        background: #1a1a2e;
+        color: white;
+        font-family: "Segoe UI", sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 40px 20px;
+      }
+      h1 {
+        color: #e94560;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        margin-bottom: 30px;
+      }
+      .leaderboard {
+        width: 100%;
+        max-width: 600px;
+        background: #161624;
+        border-radius: 12px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        padding: 10px 0;
+      }
+      .row {
+        display: flex;
+        justify-content: space-between;
+        padding: 15px 25px;
+        border-bottom: 1px solid #252538;
+        font-size: 18px;
+        align-items: center;
+      }
+      .row:last-child {
+        border-bottom: none;
+      }
+      .rank {
+        font-weight: bold;
+        color: #e94560;
+        margin-right: 15px;
+      }
+      .team-name {
+        flex-grow: 1;
+        text-align: left;
+      }
+      .time {
+        font-family: "Courier New", Courier, monospace;
+        font-weight: bold;
+        color: #00bcd4;
+      }
+      .top3 {
+        font-size: 22px;
+        background: rgba(233, 69, 96, 0.1);
+      }
+    </style>
+
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+      import {
+        getFirestore,
+        collection,
+        query,
+        orderBy,
+        onSnapshot,
+      } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+      // Firebase Konsolundan aldığın AYNI config bilgilerini buraya yapıştır
+      const firebaseConfig = {
+        apiKey: "AIzaSyCAXl2mbAKmJ0OzLL6zeEkIRkNmgYsZs1w",
+        authDomain: "hazine-avi-fcb82.firebaseapp.com",
+        projectId: "hazine-avi-fcb82",
+        storageBucket: "hazine-avi-fcb82.firebasestorage.app",
+        messagingSenderId: "767779389071",
+        appId: "1:767779389071:web:b72ab019772cfa8537bafa",
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+
+      const listContainer = document.getElementById("skorListesi");
+
+      function sureFormatla(toplamSaniye) {
+        const dk = Math.floor(toplamSaniye / 60);
+        const sn = toplamSaniye % 60;
+        return `${dk.toString().padStart(2, "0")}:${sn.toString().padStart(2, "0")}`;
+      }
+
+      const q = query(collection(db, "skorlar"), orderBy("gecenSure", "asc"));
+      onSnapshot(q, (snapshot) => {
+        listContainer.innerHTML = "";
+        let sira = 1;
+
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+          const row = document.createElement("div");
+          row.className = `row ${sira <= 3 ? "top3" : ""}`;
+
+          row.innerHTML = `
+                    <span class="rank">#${sira}</span>
+                    <span class="team-name">${data.takimAdi}</span>
+                    <span class="time">${sureFormatla(data.gecenSure)}</span>
+                `;
+
+          listContainer.appendChild(row);
+          sira++;
+        });
+      });
+    </script>
+  </head>
+  <body>
+    <h1>Canlı Skor Tablosu</h1>
+    <div class="leaderboard" id="skorListesi"></div>
+  </body>
+</html>
